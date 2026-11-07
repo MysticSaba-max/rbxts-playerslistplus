@@ -7,7 +7,8 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
-local GetPermissions = require(ReplicatedStorage.PlayersListPlus.Modules.GetPermissions)
+-- (package) Next to this module, wherever the package sits (node_modules), not ReplicatedStorage.PlayersListPlus.
+local GetPermissions = require(script.Parent.GetPermissions)
 local Assets = script.Parent.Parent.Assets
 local PlayersListPlus = _G.PlayersListPlus
 
@@ -168,7 +169,8 @@ function module.Show(Player : Player)
 		end
 
 		local BlockedIds = StarterGui:GetCore("GetBlockedUserIds")
-		local isBlocked = table.find(BlockedIds, LocalPlayer.UserId)
+		-- (package) The selected player, not yourself: the original looked up LocalPlayer.UserId.
+		local isBlocked = table.find(BlockedIds, Player.UserId)
 
 		if isBlocked then
 			module.AddButtons({UnBlockButton})

@@ -1,5 +1,10 @@
+--[[ rbxts-playerslistplus: PlayersListPlus v1.19.0 by MiniDev, packaged for npm and roblox-ts. The changes
+	from the original are listed in the package README ("Changes from the original"). Configure it with
+	PlayersListPlus.init(config) on the client and PlayersListPlus.initServer(config) on the server, instead
+	of editing the Config table below: its values are the defaults, a config passed to init replaces them. ]]
+
 --[[---------------------------------------------------------------------------------------------------------
-	
+
 	DevForum Link : https://devforum.roblox.com/t/playerslistplus-v1-better-players-list/2975158
 	
 	How To Setup:
@@ -148,6 +153,7 @@ local Config = {
 	MobileInset = false, -- if true, make the Players List higher on screen if the player uses the new Roblox UI Layout
 	TeamSize = 0.115, -- 0.115 recommended
 	ShowPlayerCanTalkWith = true, -- Show 🔊 if player can talk with others
+	StartOpen = true, -- (package) false: the list starts closed, its tab and Tab open it
 }
 
 Config.VERSION = 1.19
@@ -256,13 +262,42 @@ local GetCustomTag = require(script.Modules.GetCustomTag)
 local Abbreviation = require(Modules.Abbreviation)
 local SelectPlayer = require(Modules.SelectPlayer)
 
---# Ratio
+--# Ratio (package: computed again by applyConfig, once init or initServer has the config)
 
-local ratio = 1 + (#Config.leaderstats-1) * .5
-local statsRatio = (.4/ratio)
-local nameRatio = (.6/ratio)
-local totalRatio = statsRatio * #Config.leaderstats + nameRatio
-nameRatio += 1-totalRatio
+local ratio, statsRatio, nameRatio
+
+local function computeRatios()
+	ratio = 1 + (#Config.leaderstats-1) * .5
+	statsRatio = (.4/ratio)
+	nameRatio = (.6/ratio)
+	local totalRatio = statsRatio * #Config.leaderstats + nameRatio
+	nameRatio += 1-totalRatio
+end
+
+computeRatios()
+
+-- (package) A config passed to init or initServer replaces the defaults above, key by key.
+local function applyConfig(config)
+	if config == nil then
+		return
+	end
+
+	for key, value in config do
+		Config[key] = value
+	end
+
+	computeRatios()
+
+	if config.MenuFont then
+		for _, root in {script, UI} do
+			for i,v in root:GetDescendants() do
+				if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
+					v.Font = Config.MenuFont
+				end
+			end
+		end
+	end
+end
 
 --# Others
 
@@ -683,7 +718,15 @@ local Menu_TI = TweenInfo.new(.1, Enum.EasingStyle.Linear)
 local VisibleMenu = TweenService:Create(UIListMaster, Menu_TI, {GroupTransparency = 0})
 local InvisibleMenu = TweenService:Create(UIListMaster, Menu_TI, {GroupTransparency = 1})
 
-function module.init()
+-- (package) The server half, the setup Script's job before: the Kick button and who can chat with whom.
+function module.initServer(config)
+	applyConfig(config)
+	require(script.Server).init()
+end
+
+function module.init(config)
+
+	applyConfig(config)
 
 	local studio = RunService:IsStudio()
 
@@ -902,6 +945,19 @@ function module.init()
 	UIListMaster.Top.MouseButton1Click:Connect(close)
 	UIListMaster.Parent.Folder.Open.MouseButton1Click:Connect(open)
 
+	-- (package) Open and close from code, and a list that starts closed.
+	module.Open = open
+	module.Close = close
+	module.IsOpen = function()
+		return Openned
+	end
+
+	if Config.StartOpen == false then
+		Openned = false
+		UIListMaster.Visible = false
+		UIListMaster.Parent.Folder.Open.Visible = true
+	end
+
 	game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessedEvent)
 		if gameProcessedEvent then
 			return
@@ -943,9 +999,12 @@ function module.init()
 		end)
 	end)
 	
-	task.delay(2.5, function()
-		script.RemoteEvent:FireServer("getUserYouCanChatWith")
-	end)
+	-- (package) Only when the 🔊 is wanted: otherwise no server listens.
+	if Config.ShowPlayerCanTalkWith == true then
+		task.delay(2.5, function()
+			script.RemoteEvent:FireServer("getUserYouCanChatWith")
+		end)
+	end
 end
 
 return module

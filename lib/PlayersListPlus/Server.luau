@@ -1,8 +1,14 @@
+-- (package) The setup Script's Server module, now a child of the package: PlayersListPlus.initServer(config)
+-- requires and starts it. The module is found next to it, not at ReplicatedStorage.PlayersListPlus.
 local module = {}
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Module = ReplicatedStorage.PlayersListPlus
+local Module = script.Parent
 local PlayersListPlus = require(Module)
+
+-- (package) Seconds between two "getUserYouCanChatWith" a player may ask for: each one makes one
+-- CanUsersChatAsync web call per player in the server, and a client can fire the remote as often as it likes.
+local CHAT_LIST_COOLDOWN = 5
+local lastChatList = {}
 local GetPermissions = require(Module.Modules.GetPermissions)
 local Remote = Module.RemoteEvent
 local Players = game:GetService("Players")
@@ -31,18 +37,36 @@ function getUsersYouCanChatWith(plr: Player)
 	return playersYouCanChatWith
 end
 
+-- (package) The server's own refresh (a player joined) skips the cooldown; a client's request goes through it.
+function sendChatList(plr: Player)
+	Remote:FireClient(plr, "PlayersYouCanChatWith", getUsersYouCanChatWith(plr))
+end
+
 local events = {
 	["Kick"] = function(Player, PlayerToKick)
 		local hasPermission = GetPermissions.HasPlayerPermission(Player, "Kick")
-		
+
 		if not hasPermission then
 			return
 		end
-		
+
+		-- (package) The client chooses this argument: only a player in this server is kicked.
+		if typeof(PlayerToKick) ~= "Instance" or not PlayerToKick:IsA("Player") or PlayerToKick.Parent ~= Players then
+			return
+		end
+
 		PlayerToKick:Kick()
 	end,
 	["getUserYouCanChatWith"] = PlayersListPlus.Config.ShowPlayerCanTalkWith and function(Player)
-		Remote:FireClient(Player, "PlayersYouCanChatWith", getUsersYouCanChatWith(Player))
+		-- (package) At most once per CHAT_LIST_COOLDOWN for each player.
+		local now = os.clock()
+		local last = lastChatList[Player]
+		if last and now - last < CHAT_LIST_COOLDOWN then
+			return
+		end
+		lastChatList[Player] = now
+
+		sendChatList(Player)
 	end,
 }
 
@@ -66,14 +90,18 @@ function module.init()
 					if player == newPlayer then
 						continue
 					end
-					
-					events.getUserYouCanChatWith(player)
+
+					sendChatList(player)
 				end
-				
+
 			end)
-			
+
 		end)
-		
+
+		Players.PlayerRemoving:Connect(function(plr)
+			lastChatList[plr] = nil
+		end)
+
 	end
 end
 

@@ -1,0 +1,34 @@
+{
+	"name": "@rbxts/playerslistplus",
+	"version": "1.19.0",
+	"description": "roblox-ts typings for PlayersListPlus by MiniDev: a custom Roblox players list with leaderstats columns and icons, sorting, teams, player menu (friend, block, examine), tags and custom icons.",
+	"main": "lib/PlayersListPlus/init.luau",
+	"types": "lib/PlayersListPlus/index.d.ts",
+	"files": [
+		"lib/PlayersListPlus/**/*.luau",
+		"lib/PlayersListPlus/**/*.rbxm",
+		"lib/PlayersListPlus/**/*.model.json",
+		"lib/PlayersListPlus/index.d.ts",
+		"LICENSE.md",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MysticSaba-max/rbxts-playerslistplus.git"
+	},
+	"homepage": "https://github.com/MysticSaba-max/rbxts-playerslistplus#readme",
+	"bugs": {
+		"url": "https://github.com/MysticSaba-max/rbxts-playerslistplus/issues"
+	},
+	"keywords": [
+		"roblox",
+		"roblox-ts",
+		"rbxts",
+		"ui",
+		"playerlist",
+		"leaderboard",
+		"leaderstats"
+	],
+	"author": "MiniDev (PlayersListPlus, Luau); roblox-ts typings and package by MysticSaba-max",
+	"license": "SEE LICENSE IN LICENSE.md"
+}
