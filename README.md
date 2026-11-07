@@ -37,6 +37,7 @@ PlayersListPlus.init({
 });
 
 PlayersListPlus.Close?.(); // and Open?.(), IsOpen?.()
+PlayersListPlus.SetTopOffset(80); // under your own HUD at the top right
 ```
 
 ```ts
@@ -63,6 +64,9 @@ Every change is marked `(package)` in the code.
   sizes are computed again from it, and a `MenuFont` given is applied.
 - **`StartOpen`** (default `true`): `false` starts the list closed. `Open`, `Close` and `IsOpen` are
   exported after `init`.
+- **Size and place**: `RowRatio` (the original divides the rows' height by the columns' ratio, so rows get
+  small past 2 columns; `1.5` keeps 2 columns' rows), `Scale` (a `UIScale` from the top right corner) and
+  `TopOffset` / `SetTopOffset(px)` (moves the list down, for your own HUD above it).
 - **Fixes**:
   - the Kick remote only kicks a `Player` of this server (the client chooses that argument);
   - the 🔊 list costs one `CanUsersChatAsync` call per player in the server: a client may ask for it at

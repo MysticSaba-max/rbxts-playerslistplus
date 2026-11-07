@@ -62,6 +62,15 @@ interface PlayersListPlusConfig {
 	ShowPlayerCanTalkWith: boolean;
 	/** (package) false: the list starts closed; its tab, Tab or Open() opens it. */
 	StartOpen: boolean;
+	/**
+	 * (package) The rows' and header's heights are divided by this. Unset: by the columns' ratio (1 + 0.5 per
+	 * column after the first), as the original, which makes the rows small past 2 columns; 1.5 keeps 2 columns' rows.
+	 */
+	RowRatio?: number;
+	/** (package) A UIScale on the list, its tab and the player menu, from their top right corner (default 1). */
+	Scale: number;
+	/** (package) Pixels the list, its tab and the player menu go down, for your own HUD above (default 0). */
+	TopOffset: number;
 	readonly VERSION: number;
 }
 
@@ -88,6 +97,8 @@ interface PlayersListPlus {
 	Close?: () => void;
 	/** (package, after init) Whether the list is open. */
 	IsOpen?: () => boolean;
+	/** (package) Moves the list, its tab and the player menu down by this many pixels (Config.TopOffset). */
+	SetTopOffset: (offset: number) => void;
 
 	/** An icon before the player's name. Call it on the server so everyone sees it. */
 	AddCustomIconPlayer: (player: Player, icon: string) => void;

@@ -154,6 +154,9 @@ local Config = {
 	TeamSize = 0.115, -- 0.115 recommended
 	ShowPlayerCanTalkWith = true, -- Show 🔊 if player can talk with others
 	StartOpen = true, -- (package) false: the list starts closed, its tab and Tab open it
+	RowRatio = nil, -- (package) the rows' heights are divided by this; nil: by the columns' ratio, as the original (small rows past 2 columns)
+	Scale = 1, -- (package) a UIScale on the list and the player menu, from their top right corner
+	TopOffset = 0, -- (package) pixels the list, its tab and the player menu go down (room for your own HUD); see SetTopOffset
 }
 
 Config.VERSION = 1.19
@@ -264,10 +267,11 @@ local SelectPlayer = require(Modules.SelectPlayer)
 
 --# Ratio (package: computed again by applyConfig, once init or initServer has the config)
 
-local ratio, statsRatio, nameRatio
+local ratio, statsRatio, nameRatio, heightRatio
 
 local function computeRatios()
 	ratio = 1 + (#Config.leaderstats-1) * .5
+	heightRatio = Config.RowRatio or ratio
 	statsRatio = (.4/ratio)
 	nameRatio = (.6/ratio)
 	local totalRatio = statsRatio * #Config.leaderstats + nameRatio
@@ -407,7 +411,7 @@ end
 
 function AddLeaderstats(Player, Frame)
 	for i,v in Config.leaderstats do
-		Frame.Size = UDim2.new(1,0,Assets.PlayerFrame.Size.Y.Scale/ratio,0)
+		Frame.Size = UDim2.new(1,0,Assets.PlayerFrame.Size.Y.Scale/heightRatio,0)
 
 		local PlayerNameFrame = Frame:WaitForChild("PlayerNameFrame", 99999)
 
@@ -718,6 +722,13 @@ local Menu_TI = TweenInfo.new(.1, Enum.EasingStyle.Linear)
 local VisibleMenu = TweenService:Create(UIListMaster, Menu_TI, {GroupTransparency = 0})
 local InvisibleMenu = TweenService:Create(UIListMaster, Menu_TI, {GroupTransparency = 1})
 
+-- (package) Moves the list, its tab and the player menu down by `offset` pixels (room for your own HUD above).
+-- The frame's top right corner is where the original's centred frame had it: 0.9925 of the width, 5 px down.
+function module.SetTopOffset(offset)
+	Config.TopOffset = offset
+	UI.Frame.Position = UDim2.new(0.9925, 0, 0, 5 + offset)
+end
+
 -- (package) The server half, the setup Script's job before: the Kick button and who can chat with whom.
 function module.initServer(config)
 	applyConfig(config)
@@ -769,12 +780,23 @@ function module.init(config)
 		for i,v in UIListMaster:GetDescendants() do
 			if v:IsA("GuiObject") and v.Size ~= UDim2.new(1,0,1,0) and v:GetAttribute("resize") == nil then
 				local pSize = v.Size
-				v.Size = UDim2.new(pSize.X.Scale, 0, pSize.Y.Scale / ratio, 0)
+				v.Size = UDim2.new(pSize.X.Scale, 0, pSize.Y.Scale / heightRatio, 0)
 			end
 		end
 	end
 
-	Teams = game.Teams:GetChildren() 
+	-- (package) Scale and TopOffset: the frame holding the list, its tab and the player menu is held by its top
+	-- right corner (the same place as the original's centre anchor), so a UIScale grows it left and down.
+	UI.Frame.AnchorPoint = Vector2.new(1, 0)
+	module.SetTopOffset(Config.TopOffset or 0)
+
+	if Config.Scale and Config.Scale ~= 1 then
+		local scale = Instance.new("UIScale")
+		scale.Scale = Config.Scale
+		scale.Parent = UI.Frame
+	end
+
+	Teams = game.Teams:GetChildren()
 
 	Config.Teams = false
 	Config.TeamsLayoutOrder = {}
