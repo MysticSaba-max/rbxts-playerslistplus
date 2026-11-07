@@ -71,6 +71,13 @@ interface PlayersListPlusConfig {
 	Scale: number;
 	/** (package) Pixels the list, its tab and the player menu go down, for your own HUD above (default 0). */
 	TopOffset: number;
+	/**
+	 * (package) How the list closes: "Fade" (the original, default) or "Slide": it slides out to the right and
+	 * back, and the original's open button slides in at the screen's right edge once it is gone.
+	 */
+	CloseAnimation: "Fade" | "Slide";
+	/** (package, "Slide") Pixels from the top for the open button; unset: TopOffset. */
+	TabOffset?: number;
 	readonly VERSION: number;
 }
 
@@ -97,8 +104,11 @@ interface PlayersListPlus {
 	Close?: () => void;
 	/** (package, after init) Whether the list is open. */
 	IsOpen?: () => boolean;
-	/** (package) Moves the list, its tab and the player menu down by this many pixels (Config.TopOffset). */
-	SetTopOffset: (offset: number) => void;
+	/**
+	 * (package) Moves the list and the player menu down by `offset` pixels (Config.TopOffset), and the "Slide" tab
+	 * to `tabOffset` (Config.TabOffset; unset: it follows `offset`).
+	 */
+	SetTopOffset: (offset: number, tabOffset?: number) => void;
 
 	/** An icon before the player's name. Call it on the server so everyone sees it. */
 	AddCustomIconPlayer: (player: Player, icon: string) => void;

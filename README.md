@@ -66,7 +66,10 @@ Every change is marked `(package)` in the code.
   exported after `init`.
 - **Size and place**: `RowRatio` (the original divides the rows' height by the columns' ratio, so rows get
   small past 2 columns; `1.5` keeps 2 columns' rows), `Scale` (a `UIScale` from the top right corner) and
-  `TopOffset` / `SetTopOffset(px)` (moves the list down, for your own HUD above it).
+  `TopOffset` / `SetTopOffset(px, tabPx?)` (moves the list down, for your own HUD above it).
+- **`CloseAnimation: "Slide"`** (default `"Fade"`, the original): the list slides out to the right and
+  back (0.18 s out, 0.3 s in, no move with reduced motion); the original's open button, unchanged, slides
+  in at the screen's right edge once the list is gone (at `TabOffset`, default `TopOffset`).
 - **Fixes**:
   - the Kick remote only kicks a `Player` of this server (the client chooses that argument);
   - the 🔊 list costs one `CanUsersChatAsync` call per player in the server: a client may ask for it at

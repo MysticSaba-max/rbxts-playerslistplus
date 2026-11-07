@@ -157,6 +157,8 @@ local Config = {
 	RowRatio = nil, -- (package) the rows' heights are divided by this; nil: by the columns' ratio, as the original (small rows past 2 columns)
 	Scale = 1, -- (package) a UIScale on the list and the player menu, from their top right corner
 	TopOffset = 0, -- (package) pixels the list, its tab and the player menu go down (room for your own HUD); see SetTopOffset
+	CloseAnimation = "Fade", -- (package) "Slide": the list slides out to the right and back, the open button slides in once it is gone
+	TabOffset = nil, -- (package) "Slide": pixels from the top for the open button; nil: TopOffset
 }
 
 Config.VERSION = 1.19
@@ -724,8 +726,11 @@ local InvisibleMenu = TweenService:Create(UIListMaster, Menu_TI, {GroupTranspare
 
 -- (package) Moves the list, its tab and the player menu down by `offset` pixels (room for your own HUD above).
 -- The frame's top right corner is where the original's centred frame had it: 0.9925 of the width, 5 px down.
-function module.SetTopOffset(offset)
+function module.SetTopOffset(offset, tabOffset)
 	Config.TopOffset = offset
+	if tabOffset ~= nil then
+		Config.TabOffset = tabOffset
+	end
 	UI.Frame.Position = UDim2.new(0.9925, 0, 0, 5 + offset)
 end
 
@@ -964,8 +969,120 @@ function module.init(config)
 		DB = false
 	end
 
+	-- (package) CloseAnimation "Slide": the list slides out to the right and comes back, instead of the fade.
+	-- The original's open button stays as it looks, out of the frame so it does not slide with it, and slides
+	-- in from the right edge once the list is gone. Any order of clicks ends in the last one asked for: each
+	-- move cancels the one running.
+	-- (package) Held here: "Slide" moves it out of its folder.
+	local OpenButton = UIListMaster.Parent.Folder.Open
+
+	if Config.CloseAnimation == "Slide" then
+		local Frame = UIListMaster.Parent
+		local Tab = OpenButton
+		local scale = Config.Scale or 1
+
+		-- The place and size the frame gave the button (0.985 of the screen wide, its left edge at 0.0075):
+		-- its right edge at 0.0075 + 1.085 × 0.985 of the screen, 0.1 × 0.985 wide, 0.035 high.
+		local TAB_RIGHT = 0.0075 + 1.085 * 0.985
+		local TAB_WIDTH = 0.1 * 0.985
+		Tab.Parent = UI
+		Tab.Size = UDim2.fromScale(TAB_WIDTH, 0.035)
+		Tab.Visible = true
+
+		local function tabY()
+			return 5 + (Config.TabOffset or Config.TopOffset or 0)
+		end
+		local function frameY()
+			return Frame.Position.Y
+		end
+
+		local shownFrame = function()
+			return UDim2.new(0.9925, 0, frameY().Scale, frameY().Offset)
+		end
+		local hiddenFrame = function()
+			local width = math.max(UIListMaster.AbsoluteSize.X, 300 * scale)
+			return UDim2.new(1, width + 20, frameY().Scale, frameY().Offset)
+		end
+		local shownTab = function()
+			return UDim2.new(TAB_RIGHT, 0, 0, tabY())
+		end
+		local hiddenTab = function()
+			return UDim2.new(TAB_RIGHT + TAB_WIDTH, 0, 0, tabY())
+		end
+
+		-- Exits are faster than entrances and never overshoot; reduced motion: no move, at once.
+		local SLIDE_OUT = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		local SLIDE_IN = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		local TAB_IN = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, 0, false, 0.12)
+		local TAB_OUT = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+		local frameTween, tabTween
+
+		local function move(target, info, position)
+			if game:GetService("GuiService").ReducedMotionEnabled then
+				target.Position = position
+				return nil
+			end
+			local tween = TweenService:Create(target, info, {Position = position})
+			tween:Play()
+			return tween
+		end
+
+		local function cancel()
+			if frameTween then frameTween:Cancel() end
+			if tabTween then tabTween:Cancel() end
+		end
+
+		open = function()
+			Openned = true
+			cancel()
+			UIListMaster.GroupTransparency = 0
+			UIListMaster.Visible = true
+			frameTween = move(Frame, SLIDE_IN, shownFrame())
+			tabTween = move(Tab, TAB_OUT, hiddenTab())
+		end
+
+		close = function()
+			Openned = false
+			cancel()
+			Frame.SelectPlayer.Visible = false
+			frameTween = move(Frame, SLIDE_OUT, hiddenFrame())
+			tabTween = move(Tab, TAB_IN, shownTab())
+			-- Out of sight, it is hidden too: nothing of it peeks in if the screen grows, nothing takes clicks.
+			if frameTween then
+				frameTween.Completed:Connect(function(state)
+					if state == Enum.PlaybackState.Completed and not Openned then
+						UIListMaster.Visible = false
+					end
+				end)
+			else
+				UIListMaster.Visible = false
+			end
+		end
+
+		-- SetTopOffset moves the tab too.
+		module.SetTopOffset = function(offset, tabOffset)
+			Config.TopOffset = offset
+			if tabOffset ~= nil then
+				Config.TabOffset = tabOffset
+			end
+			Frame.Position = UDim2.new(Frame.Position.X.Scale, Frame.Position.X.Offset, 0, 5 + offset)
+			Tab.Position = UDim2.new(Tab.Position.X.Scale, Tab.Position.X.Offset, 0, tabY())
+		end
+
+		-- The starting state, without moving.
+		if Config.StartOpen == false then
+			Openned = false
+			Frame.Position = hiddenFrame()
+			Tab.Position = shownTab()
+			UIListMaster.Visible = false
+		else
+			Tab.Position = hiddenTab()
+		end
+	end
+
 	UIListMaster.Top.MouseButton1Click:Connect(close)
-	UIListMaster.Parent.Folder.Open.MouseButton1Click:Connect(open)
+	OpenButton.MouseButton1Click:Connect(open)
 
 	-- (package) Open and close from code, and a list that starts closed.
 	module.Open = open
@@ -974,7 +1091,7 @@ function module.init(config)
 		return Openned
 	end
 
-	if Config.StartOpen == false then
+	if Config.StartOpen == false and Config.CloseAnimation ~= "Slide" then
 		Openned = false
 		UIListMaster.Visible = false
 		UIListMaster.Parent.Folder.Open.Visible = true
